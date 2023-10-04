@@ -72,7 +72,11 @@ void setup() {
     /*
      * Initialize the OCPP library
      */
-    mocpp_initialize(OCPP_HOST, OCPP_PORT, OCPP_URL, "My Charging Station", "My company name");
+    mocpp_initialize(OCPP_HOST,
+                     OCPP_PORT,
+                     OCPP_URL,
+                     "My Charging Station",
+                     "My company name");
 
     /*
      * Integrate OCPP functionality. You can leave out the following part if your EVSE doesn't need it.
@@ -84,7 +88,9 @@ void setup() {
 
     setSmartChargingCurrentOutput([](float limit) {
         // set the SAE J1772 Control Pilot value here
-        Serial.printf("[main] Smart Charging allows maximum charge rate: %.0f\n", limit);
+        Serial.printf(
+            "[main] Smart Charging allows maximum charge rate: %.0f\n",
+            limit);
     });
 
     setConnectorPluggedInput([]() {
@@ -100,12 +106,16 @@ void serial2_get_data() {
         raw_serial2 = Serial2.readStringUntil('\n');
         Serial.println("raw_serial2: " + raw_serial2);
         if (raw_serial2.indexOf("p_") >= 0 && raw_serial2.indexOf("!") >= 0) {
-            screen_test_string = raw_serial2.substring(raw_serial2.indexOf("p_") + 2, raw_serial2.indexOf("!"));
+            screen_test_string =
+                raw_serial2.substring(raw_serial2.indexOf("p_") + 2,
+                                      raw_serial2.indexOf("!"));
             Serial.println("screen_test_string: " + screen_test_string);
             yield();
         }
         if (raw_serial2.indexOf("pst_") >= 0 && raw_serial2.indexOf("!") >= 0) {
-            data_from_serial2 = raw_serial2.substring(raw_serial2.indexOf("pst_") + 4, raw_serial2.indexOf("!"));
+            data_from_serial2 =
+                raw_serial2.substring(raw_serial2.indexOf("pst_") + 4,
+                                      raw_serial2.indexOf("!"));
             Serial.println("data_from_serial2: " + data_from_serial2);
             // screen_test_string = data_from_serial2;
             yield();
@@ -145,11 +155,11 @@ void loop() {
 
     String idTag = "0123456789ABCD";
 
-    // if (raw_serial2 == "plugged") {
-    //     is_plugged = true;
-    // } else if (raw_serial2 == "unplugged") {
-    //     is_plugged = false;
-    // }
+    if (raw_serial2 == "plugged") {
+        is_plugged = true;
+    } else if (raw_serial2 == "unplugged") {
+        is_plugged = false;
+    }
 
     is_plugged = true;
 
@@ -160,14 +170,16 @@ void loop() {
             return true;
         });
         // Begin a new transaction
-        Serial.printf("[main] Begin Transaction with idTag %s\n", idTag.c_str());
+        Serial.printf("[main] Begin Transaction with idTag %s\n",
+                      idTag.c_str());
         auto ret = beginTransaction(idTag.c_str());
         Serial2.println("beginTransaction");
 
         if (ret) {
-            Serial.println(F(
-                "[main] Transaction initiated. OCPP lib will send a StartTransaction when"
-                "ConnectorPlugged Input becomes true and if the Authorization succeeds"));
+            Serial.println(F("[main] Transaction initiated. OCPP lib will send "
+                             "a StartTransaction when"
+                             "ConnectorPlugged Input becomes true and if the "
+                             "Authorization succeeds"));
         } else {
             Serial.println(F("[main] No transaction initiated"));
         }
