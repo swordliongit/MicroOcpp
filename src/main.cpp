@@ -169,20 +169,21 @@ void loop() {
             // return true if an EV is plugged to this EVSE
             return true;
         });
-        // Begin a new transaction
-        Serial.printf("[main] Begin Transaction with idTag %s\n",
-                      idTag.c_str());
-        auto ret = beginTransaction(idTag.c_str());
-        Serial2.println("beginTransaction");
+        // // Begin a new transaction
+        // Serial.printf("[main] Begin Transaction with idTag %s\n",
+        //               idTag.c_str());
+        // auto ret = beginTransaction(idTag.c_str());
 
-        if (ret) {
-            Serial.println(F("[main] Transaction initiated. OCPP lib will send "
-                             "a StartTransaction when"
-                             "ConnectorPlugged Input becomes true and if the "
-                             "Authorization succeeds"));
-        } else {
-            Serial.println(F("[main] No transaction initiated"));
-        }
+        // Serial2.println("beginTransaction");
+
+        // if (ret) {
+        //     Serial.println(F("[main] Transaction initiated. OCPP lib will send "
+        //                      "a StartTransaction when"
+        //                      "ConnectorPlugged Input becomes true and if the "
+        //                      "Authorization succeeds"));
+        // } else {
+        //     Serial.println(F("[main] No transaction initiated"));
+        // }
     } else if (is_plugged == false && last_plugged_status == true) {
         last_plugged_status = false;
         setConnectorPluggedInput([]() {
