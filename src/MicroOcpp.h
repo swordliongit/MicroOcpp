@@ -381,21 +381,21 @@ void setOnSendConf(const char *operationType, OnSendConfListener onSendConf);
  * 
  * Use case 2, bypass the business logic of this library for custom behavior. E.g. StartTransaction:
  * 
- * sendRequest("StartTransaction", [] () -> std::unique_ptr<DynamicJsonDocument> {
- *     //will be called to create the request once this operation is being sent out
- *     size_t capacity = JSON_OBJECT_SIZE(4); //for calculating the required capacity, see https://arduinojson.org/v6/assistant/
- *     auto res = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(capacity)); 
- *     JsonObject request = *res;
- *     request["connectorId"] = 1;
- *     request["idTag"] = "A9C3CE1D7B71EA";
- *     request["meterStart"] = 1234;
- *     request["timestamp"] = "2023-06-01T11:07:43Z"; //e.g. some historic transaction
- *     return res;
- * }, [] (JsonObject response) -> void {
- *     //will be called with the confirmation response of the server
- *     const char *status = response["idTagInfo"]["status"];
- *     int transactionId = response["transactionId"];
- * });
+//  * sendRequest("StartTransaction", [] () -> std::unique_ptr<DynamicJsonDocument> {
+//  *     //will be called to create the request once this operation is being sent out
+//  *     size_t capacity = JSON_OBJECT_SIZE(4); //for calculating the required capacity, see https://arduinojson.org/v6/assistant/
+//  *     auto res = std::unique_ptr<DynamicJsonDocument>(new DynamicJsonDocument(capacity)); 
+//  *     JsonObject request = *res;
+//  *     request["connectorId"] = 1;
+//  *     request["idTag"] = "A9C3CE1D7B71EA";
+//  *     request["meterStart"] = 1234;
+//  *     request["timestamp"] = "2023-06-01T11:07:43Z"; //e.g. some historic transaction
+//  *     return res;
+//  * }, [] (JsonObject response) -> void {
+//  *     //will be called with the confirmation response of the server
+//  *     const char *status = response["idTagInfo"]["status"];
+//  *     int transactionId = response["transactionId"];
+//  * });
  * 
  * In Use case 2, the library won't send any further StatusNotification or StopTransaction on
  * its own.

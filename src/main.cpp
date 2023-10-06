@@ -30,6 +30,12 @@ bool rfidCardDetected = false;
 bool is_plugged = false;
 bool last_plugged_status = false;
 
+bool active = false;
+bool running = false;
+bool lastActiveState = false;
+bool lastRunningState = false;
+String lastState = "";
+
 String raw_serial2 = "";
 String data_from_serial2 = "6";
 char screen_test_char[] = "test";
@@ -124,8 +130,40 @@ void serial2_get_data() {
     }
 }
 
+void sendMeterValues() {
+    sendRequest(
+        "MeterValues",
+        []() -> std::unique_ptr<DynamicJsonDocument> {
+            //will be called to create the request once this operation is being sent out
+            size_t capacity = JSON_OBJECT_SIZE(
+                384); //for calculating the required capacity, see https://arduinojson.org/v6/assistant/
+            auto res = std::unique_ptr<DynamicJsonDocument>(
+                new DynamicJsonDocument(capacity));
+            JsonObject request = res->to<JsonObject>();
+            request["connectorId"] = 1;
+            request["transactionId"] = 10;
+            JsonArray meterValues = request.createNestedArray("meterValue");
+            JsonObject meterValueSample = meterValues.createNestedObject();
+            meterValueSample["timestamp"] = "2023-10-05T14:48:45.783Z";
+
+            JsonArray sampledValue =
+                meterValueSample.createNestedArray("sampledValue");
+            JsonObject sampledValueItem = sampledValue.createNestedObject();
+            sampledValueItem["value"] = "0.0";
+            sampledValueItem["context"] = "Sample.Periodic";
+            sampledValueItem["measurand"] = "Energy.Active.Import.Register";
+            sampledValueItem["unit"] = "Wh";
+            return res;
+        },
+        [](JsonObject response) -> void {
+            //will be called with the confirmation response of the server
+            // const char *status = response["idTagInfo"]["status"];
+            // int transactionId = response["transactionId"];
+        });
+}
+
 void loop() {
-    // serial2_get_data();
+    serial2_get_data();
 
     /*
      * Do all OCPP stuff (process WebSocket input, send recorded meter values to Central System, etc.)
@@ -153,15 +191,23 @@ void loop() {
 
     // unsigned long currentMillis = millis();
 
-    String idTag = "0123456789ABCD";
+    const char *idTag = "0123456789ABCD";
 
-    if (raw_serial2 == "plugged") {
+    bool error = false;
+
+    if (screen_test_string == "plugged") {
+        // Serial.println(screen_test_string);
         is_plugged = true;
-    } else if (raw_serial2 == "unplugged") {
+    } else if (screen_test_string == "unplugged") {
+        // Serial.println(screen_test_string);
         is_plugged = false;
     }
+    // } else if (raw_serial2 == "error") {
+    //     error = true;
+    // }
 
-    is_plugged = true;
+    // isTransactionActive()
+    // p_bt!
 
     if (is_plugged == true && last_plugged_status == false) {
         last_plugged_status = true;
@@ -169,6 +215,8 @@ void loop() {
             // return true if an EV is plugged to this EVSE
             return true;
         });
+
+        sendMeterValues();
         // // Begin a new transaction
         // Serial.printf("[main] Begin Transaction with idTag %s\n",
         //               idTag.c_str());
@@ -186,17 +234,71 @@ void loop() {
         // }
     } else if (is_plugged == false && last_plugged_status == true) {
         last_plugged_status = false;
+        Serial.println(F("[main] Unplugging!!!"));
         setConnectorPluggedInput([]() {
             // return true if an EV is plugged to this EVSE
             return false;
         });
+
+        sendMeterValues();
+
+        Serial.println(F("[main] End transaction after charging"));
+        endTransaction();
+    }
+    active = isTransactionActive();
+    running = isTransactionRunning();
+
+    // Determine the current state
+    String currentState;
+    if (active && running) {
+        currentState = "running";
+        lastActiveState = true;
+        lastRunningState = true;
+    } else if (active && !running) {
+        currentState = "preparing";
+        lastActiveState = true;
+        lastRunningState = false;
+    } else if (!active && running) {
+        currentState = "running/stoptxawait";
+        lastActiveState = false;
+        lastRunningState = true;
+    } else if (!active && !running) {
+        if (lastActiveState == false && lastRunningState) {
+            currentState = "finished"; // or "aborted"
+        } else {
+            currentState = "idle";
+        }
+    } else {
+        currentState = "unknown"; // Handle unexpected states
+    }
+
+    // Print the state only if it has changed from the previous state
+    if (currentState != lastState) {
+        sendMeterValues();
+        Serial.println(F("\n\n"));
+        Serial.println(active);
+        Serial.println(running);
+        Serial.println(F("\n\n"));
+        Serial.print(F("[main] State: "));
+        Serial.println(currentState);
+        Serial.println(F("\n\n"));
+
+        // Send a message to Serial2 based on the current state, for the charger esp to read
+        String message = "p_" + currentState + "!";
+        Serial2.println(message);
+
+        // Update the lastState variable
+        lastState = currentState;
+    }
+
+    if (error == true) {
+        endTransaction(idTag, "Charging error");
     }
 
     // Check if it's time to stop the charging cycle
     if (/* end transaction? */ false) {
         // End the transaction
         Serial.println(F("[main] End transaction after charging"));
-
         setConnectorPluggedInput([]() {
             // return true if an EV is plugged to this EVSE
             return false;
