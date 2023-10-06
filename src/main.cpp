@@ -14,6 +14,8 @@ ESP8266WiFiMulti WiFiMulti;
 #endif
 
 #include <MicroOcpp.h>
+#include <MicroOcpp/Core/Time.h>
+#include <MicroOcpp/Model/Model.h>
 
 #define STASSID "ARTINSYSTEMS"
 #define STAPSK "Artin2023Artin"
@@ -36,11 +38,15 @@ bool lastActiveState = false;
 bool lastRunningState = false;
 String lastState = "";
 
+float energyInput = 0.0f;
+
 String raw_serial2 = "";
 String data_from_serial2 = "6";
 char screen_test_char[] = "test";
 String screen_test_string = "XSarj";
 
+int connector_id = 1;
+int transaction_id = 10;
 //
 //  Settings which worked for my SteVe instance:
 //
@@ -52,6 +58,7 @@ void setup() {
     /*
      * Initialize Serial and WiFi
      */
+
 
     Serial.begin(115200);
     Serial2.begin(9600);
@@ -130,26 +137,66 @@ void serial2_get_data() {
     }
 }
 
-void sendMeterValues() {
+float GetEnergyValues() {
+    return energyInput;
+}
+
+typedef std::function<void(String)> TimeResponseCallback;
+String getTimeFromServer() {
+    String currentTimeStr; // String to store the current time
+
     sendRequest(
-        "MeterValues",
+        "Heartbeat",
         []() -> std::unique_ptr<DynamicJsonDocument> {
-            //will be called to create the request once this operation is being sent out
-            size_t capacity = JSON_OBJECT_SIZE(
-                384); //for calculating the required capacity, see https://arduinojson.org/v6/assistant/
+            size_t capacity = JSON_OBJECT_SIZE(2); // Adjust capacity as needed
             auto res = std::unique_ptr<DynamicJsonDocument>(
                 new DynamicJsonDocument(capacity));
             JsonObject request = res->to<JsonObject>();
-            request["connectorId"] = 1;
-            request["transactionId"] = 10;
+            // request["connectorId"] = connector_id;
+            // request["transactionId"] = transaction_id;
+            return res;
+        },
+        [&currentTimeStr](JsonObject response) -> void {
+            // Handle the server's response here
+            const char *currentTime = response["currentTime"];
+            Serial.println(F("\n\n[main] TIME FROM SERVER\n\n"));
+            Serial.println(F(currentTime));
+            Serial.println(F("\n\n[main] TIME FROM SERVER\n\n"));
+            currentTimeStr = String(currentTime);
+            Serial.println(F("\n\n[main] TIME FROM SERVER\n\n"));
+            Serial.println(currentTimeStr);
+            Serial.println(F("\n\n[main] TIME FROM SERVER\n\n"));
+        });
+    return currentTimeStr;
+}
+
+
+void sendMeterValues(int connector_id, int transaction_id) {
+    sendRequest(
+        "MeterValues",
+        [connector_id,
+         transaction_id]() -> std::unique_ptr<DynamicJsonDocument> {
+            //will be called to create the request once this operation is being sent out
+            size_t capacity = JSON_OBJECT_SIZE(
+                460); //for calculating the required capacity, see https://arduinojson.org/v6/assistant/
+            auto res = std::unique_ptr<DynamicJsonDocument>(
+                new DynamicJsonDocument(capacity));
+            JsonObject request = res->to<JsonObject>();
+            request["connectorId"] = connector_id;
+            request["transactionId"] = transaction_id;
             JsonArray meterValues = request.createNestedArray("meterValue");
             JsonObject meterValueSample = meterValues.createNestedObject();
-            meterValueSample["timestamp"] = "2023-10-05T14:48:45.783Z";
+
+            MicroOcpp::Clock clock;
+            MicroOcpp::Timestamp ocppNow = clock.now();
+            char ocppNowJson[JSONDATE_LENGTH + 1] = {'\0'};
+            ocppNow.toJsonString(ocppNowJson, JSONDATE_LENGTH + 1);
+            meterValueSample["timestamp"] = ocppNowJson;
 
             JsonArray sampledValue =
                 meterValueSample.createNestedArray("sampledValue");
             JsonObject sampledValueItem = sampledValue.createNestedObject();
-            sampledValueItem["value"] = "0.0";
+            sampledValueItem["value"] = String(GetEnergyValues());
             sampledValueItem["context"] = "Sample.Periodic";
             sampledValueItem["measurand"] = "Energy.Active.Import.Register";
             sampledValueItem["unit"] = "Wh";
@@ -163,6 +210,12 @@ void sendMeterValues() {
 }
 
 void loop() {
+    const char *idTag = "0123456789ABCD";
+    int connector_id = 1;
+    int transaction_id = 10;
+
+    bool error = false;
+
     serial2_get_data();
 
     /*
@@ -180,20 +233,8 @@ void loop() {
     }
 
     /*
-     * Use NFC reader to start and stop transactions
-     */
-
-    // Time management variables
-    // static unsigned long chargingStartTime = 0;
-    // static unsigned long chargingDuration = 10000;        // Charging duration in milliseconds (10 seconds)
-    // static unsigned long intervalBetweenCharges = 20000;  // Interval between charges in milliseconds (20 seconds)
-    // static bool chargingInProgress = false;
-
-    // unsigned long currentMillis = millis();
-
-    const char *idTag = "0123456789ABCD";
-
-    bool error = false;
+    * Plug Check
+    */
 
     if (screen_test_string == "plugged") {
         // Serial.println(screen_test_string);
@@ -206,9 +247,6 @@ void loop() {
     //     error = true;
     // }
 
-    // isTransactionActive()
-    // p_bt!
-
     if (is_plugged == true && last_plugged_status == false) {
         last_plugged_status = true;
         setConnectorPluggedInput([]() {
@@ -216,7 +254,7 @@ void loop() {
             return true;
         });
 
-        sendMeterValues();
+        sendMeterValues(connector_id, transaction_id);
         // // Begin a new transaction
         // Serial.printf("[main] Begin Transaction with idTag %s\n",
         //               idTag.c_str());
@@ -240,11 +278,17 @@ void loop() {
             return false;
         });
 
-        sendMeterValues();
+        sendMeterValues(connector_id, transaction_id);
 
         Serial.println(F("[main] End transaction after charging"));
         endTransaction();
     }
+
+
+    /*
+    * State Check
+    */
+
     active = isTransactionActive();
     running = isTransactionRunning();
 
@@ -254,6 +298,9 @@ void loop() {
         currentState = "running";
         lastActiveState = true;
         lastRunningState = true;
+
+        ++energyInput;
+
     } else if (active && !running) {
         currentState = "preparing";
         lastActiveState = true;
@@ -265,6 +312,8 @@ void loop() {
     } else if (!active && !running) {
         if (lastActiveState == false && lastRunningState) {
             currentState = "finished"; // or "aborted"
+
+            energyInput = 0.0f;
         } else {
             currentState = "idle";
         }
@@ -274,7 +323,7 @@ void loop() {
 
     // Print the state only if it has changed from the previous state
     if (currentState != lastState) {
-        sendMeterValues();
+        sendMeterValues(connector_id, transaction_id);
         Serial.println(F("\n\n"));
         Serial.println(active);
         Serial.println(running);
