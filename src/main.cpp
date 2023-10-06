@@ -278,8 +278,6 @@ void loop() {
             return false;
         });
 
-        sendMeterValues(connector_id, transaction_id);
-
         Serial.println(F("[main] End transaction after charging"));
         endTransaction();
     }
