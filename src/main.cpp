@@ -17,9 +17,13 @@ ESP8266WiFiMulti WiFiMulti;
 #include <MicroOcpp/Core/Time.h>
 #include <MicroOcpp/Model/Model.h>
 
+// #define STASSID "SWORDLION"
+// #define STAPSK "doomslayer98"
+// #define OCPP_HOST "192.168.93.216"
+// #define OCPP_PORT 9000
+// #define OCPP_URL "ws://192.168.93.216:9000/CP_1"
 #define STASSID "ARTINSYSTEMS"
 #define STAPSK "Artin2023Artin"
-
 #define OCPP_HOST "192.168.100.44"
 #define OCPP_PORT 9000
 #define OCPP_URL "ws://192.168.100.44:9000/CP_1"
@@ -58,7 +62,6 @@ void setup() {
     /*
      * Initialize Serial and WiFi
      */
-
 
     Serial.begin(115200);
     Serial2.begin(9600);
@@ -139,16 +142,19 @@ void serial2_get_data() {
 
 float GetEnergyValues() {
     return energyInput;
+
+    // if (screen_test_string == "energy") {
+    // }
 }
 
 typedef std::function<void(String)> TimeResponseCallback;
 String getTimeFromServer() {
-    String currentTimeStr; // String to store the current time
+    String currentTimeStr;  // String to store the current time
 
     sendRequest(
         "Heartbeat",
         []() -> std::unique_ptr<DynamicJsonDocument> {
-            size_t capacity = JSON_OBJECT_SIZE(2); // Adjust capacity as needed
+            size_t capacity = JSON_OBJECT_SIZE(2);  // Adjust capacity as needed
             auto res = std::unique_ptr<DynamicJsonDocument>(
                 new DynamicJsonDocument(capacity));
             JsonObject request = res->to<JsonObject>();
@@ -170,15 +176,14 @@ String getTimeFromServer() {
     return currentTimeStr;
 }
 
-
 void sendMeterValues(int connector_id, int transaction_id) {
     sendRequest(
         "MeterValues",
         [connector_id,
          transaction_id]() -> std::unique_ptr<DynamicJsonDocument> {
-            //will be called to create the request once this operation is being sent out
+            // will be called to create the request once this operation is being sent out
             size_t capacity = JSON_OBJECT_SIZE(
-                460); //for calculating the required capacity, see https://arduinojson.org/v6/assistant/
+                460);  // for calculating the required capacity, see https://arduinojson.org/v6/assistant/
             auto res = std::unique_ptr<DynamicJsonDocument>(
                 new DynamicJsonDocument(capacity));
             JsonObject request = res->to<JsonObject>();
@@ -203,9 +208,9 @@ void sendMeterValues(int connector_id, int transaction_id) {
             return res;
         },
         [](JsonObject response) -> void {
-            //will be called with the confirmation response of the server
-            // const char *status = response["idTagInfo"]["status"];
-            // int transactionId = response["transactionId"];
+            // will be called with the confirmation response of the server
+            //  const char *status = response["idTagInfo"]["status"];
+            //  int transactionId = response["transactionId"];
         });
 }
 
@@ -233,8 +238,8 @@ void loop() {
     }
 
     /*
-    * Plug Check
-    */
+     * Plug Check
+     */
 
     if (screen_test_string == "plugged") {
         // Serial.println(screen_test_string);
@@ -282,10 +287,9 @@ void loop() {
         endTransaction();
     }
 
-
     /*
-    * State Check
-    */
+     * State Check
+     */
 
     active = isTransactionActive();
     running = isTransactionRunning();
@@ -297,6 +301,7 @@ void loop() {
         lastActiveState = true;
         lastRunningState = true;
 
+        // simulate energy input
         ++energyInput;
 
     } else if (active && !running) {
@@ -309,14 +314,14 @@ void loop() {
         lastRunningState = true;
     } else if (!active && !running) {
         if (lastActiveState == false && lastRunningState) {
-            currentState = "finished"; // or "aborted"
+            currentState = "finished";  // or "aborted"
 
             energyInput = 0.0f;
         } else {
             currentState = "idle";
         }
     } else {
-        currentState = "unknown"; // Handle unexpected states
+        currentState = "unknown";  // Handle unexpected states
     }
 
     // Print the state only if it has changed from the previous state
