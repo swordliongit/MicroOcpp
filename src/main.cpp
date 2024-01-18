@@ -22,11 +22,16 @@ ESP8266WiFiMulti WiFiMulti;
 // #define OCPP_HOST "192.168.93.216"
 // #define OCPP_PORT 9000
 // #define OCPP_URL "ws://192.168.93.216:9000/CP_1"
+// #define STASSID "HUNLAR"
+// #define STAPSK "hun145368"
 #define STASSID "ARTINSYSTEMS"
 #define STAPSK "Artin2023Artin"
-#define OCPP_HOST "192.168.100.44"
-#define OCPP_PORT 9000
-#define OCPP_URL "ws://192.168.100.44:9000/CP_1"
+// #define OCPP_HOST "178.157.15.196"
+#define OCPP_HOST "ocpp.petroo.dev"
+// #define OCPP_PORT 12415
+#define OCPP_PORT 6012
+// #define OCPP_URL "ws://178.157.15.196:12415/CP_1"
+#define OCPP_URL "ws://ocpp.petroo.dev:6012/ocpp/16/CP_1"
 
 unsigned long previousMillis_post_req_auth = 0;
 const long interval_post_req_auth = 1000;
@@ -44,10 +49,7 @@ String lastState = "";
 
 float energyInput = 0.0f;
 
-String raw_serial2 = "";
-String data_from_serial2 = "6";
-char screen_test_char[] = "test";
-String screen_test_string = "XSarj";
+String SERIAL2 = "";
 
 int connector_id = 1;
 int transaction_id = 10;
@@ -117,28 +119,28 @@ void setup() {
     //... see MicroOcpp.h for more settings
 }
 
-void serial2_get_data() {
-    if (Serial2.available() > 0) {
-        raw_serial2 = Serial2.readStringUntil('\n');
-        Serial.println("raw_serial2: " + raw_serial2);
-        if (raw_serial2.indexOf("p_") >= 0 && raw_serial2.indexOf("!") >= 0) {
-            screen_test_string =
-                raw_serial2.substring(raw_serial2.indexOf("p_") + 2,
-                                      raw_serial2.indexOf("!"));
-            Serial.println("screen_test_string: " + screen_test_string);
-            yield();
-        }
-        if (raw_serial2.indexOf("pst_") >= 0 && raw_serial2.indexOf("!") >= 0) {
-            data_from_serial2 =
-                raw_serial2.substring(raw_serial2.indexOf("pst_") + 4,
-                                      raw_serial2.indexOf("!"));
-            Serial.println("data_from_serial2: " + data_from_serial2);
-            // screen_test_string = data_from_serial2;
-            yield();
-        }
-        // change_wifi_Command();
-    }
-}
+// void serial2_get_data() {
+//     if (Serial2.available() > 0) {
+//         raw_serial2 = Serial2.readStringUntil('\n');
+//         Serial.println("raw_serial2: " + raw_serial2);
+//         if (raw_serial2.indexOf("p_") >= 0 && raw_serial2.indexOf("!") >= 0) {
+//             screen_test_string =
+//                 raw_serial2.substring(raw_serial2.indexOf("p_") + 2,
+//                                       raw_serial2.indexOf("!"));
+//             Serial.println("screen_test_string: " + screen_test_string);
+//             yield();
+//         }
+//         if (raw_serial2.indexOf("pst_") >= 0 && raw_serial2.indexOf("!") >= 0) {
+//             data_from_serial2 =
+//                 raw_serial2.substring(raw_serial2.indexOf("pst_") + 4,
+//                                       raw_serial2.indexOf("!"));
+//             Serial.println("data_from_serial2: " + data_from_serial2);
+//             // screen_test_string = data_from_serial2;
+//             yield();
+//         }
+//         // change_wifi_Command();
+//     }
+// }
 
 float GetEnergyValues() {
     return energyInput;
@@ -149,12 +151,12 @@ float GetEnergyValues() {
 
 typedef std::function<void(String)> TimeResponseCallback;
 String getTimeFromServer() {
-    String currentTimeStr;  // String to store the current time
+    String currentTimeStr; // String to store the current time
 
     sendRequest(
         "Heartbeat",
         []() -> std::unique_ptr<DynamicJsonDocument> {
-            size_t capacity = JSON_OBJECT_SIZE(2);  // Adjust capacity as needed
+            size_t capacity = JSON_OBJECT_SIZE(2); // Adjust capacity as needed
             auto res = std::unique_ptr<DynamicJsonDocument>(
                 new DynamicJsonDocument(capacity));
             JsonObject request = res->to<JsonObject>();
@@ -183,7 +185,7 @@ void sendMeterValues(int connector_id, int transaction_id) {
          transaction_id]() -> std::unique_ptr<DynamicJsonDocument> {
             // will be called to create the request once this operation is being sent out
             size_t capacity = JSON_OBJECT_SIZE(
-                460);  // for calculating the required capacity, see https://arduinojson.org/v6/assistant/
+                460); // for calculating the required capacity, see https://arduinojson.org/v6/assistant/
             auto res = std::unique_ptr<DynamicJsonDocument>(
                 new DynamicJsonDocument(capacity));
             JsonObject request = res->to<JsonObject>();
@@ -215,13 +217,35 @@ void sendMeterValues(int connector_id, int transaction_id) {
 }
 
 void loop() {
-    const char *idTag = "0123456789ABCD";
+    const char *idTag = "00004464CE8C";
     int connector_id = 1;
     int transaction_id = 10;
 
     bool error = false;
+    // Serial2.println("denemeeee");
+    // if (Serial2.available()) {
+    //     String receivedData = Serial2.readStringUntil('\n');
+    //     SERIAL2 = receivedData;
+    //     Serial.println("Received data:" + SERIAL2);
+    //     if (SERIAL2.indexOf("plugged") == 0) {
+    //         // Serial.println(screen_test_string);
+    //         Serial.println("PLUGGED IN!");
+    //         is_plugged = true;
+    //     } else if (SERIAL2.indexOf("unplugged") == 0) {
+    //         Serial.println("UNPLUGGED!");
+    //         is_plugged = false;
+    //     }
+    //     yield();
+    // }
+    if (counter % 70000 == 0) {
+        is_plugged = true;
+        Serial.println("PLUGGED IN!");
+    }
+    if (counter % 120000 == 0) {
+        is_plugged = false;
+        Serial.println("UNPLUGGED!");
+    }
 
-    serial2_get_data();
 
     /*
      * Do all OCPP stuff (process WebSocket input, send recorded meter values to Central System, etc.)
@@ -241,16 +265,6 @@ void loop() {
      * Plug Check
      */
 
-    if (screen_test_string == "plugged") {
-        // Serial.println(screen_test_string);
-        is_plugged = true;
-    } else if (screen_test_string == "unplugged") {
-        // Serial.println(screen_test_string);
-        is_plugged = false;
-    }
-    // } else if (raw_serial2 == "error") {
-    //     error = true;
-    // }
 
     if (is_plugged == true && last_plugged_status == false) {
         last_plugged_status = true;
@@ -303,7 +317,6 @@ void loop() {
 
         // simulate energy input
         ++energyInput;
-
     } else if (active && !running) {
         currentState = "preparing";
         lastActiveState = true;
@@ -314,14 +327,14 @@ void loop() {
         lastRunningState = true;
     } else if (!active && !running) {
         if (lastActiveState == false && lastRunningState) {
-            currentState = "finished";  // or "aborted"
+            currentState = "finished"; // or "aborted"
 
             energyInput = 0.0f;
         } else {
             currentState = "idle";
         }
     } else {
-        currentState = "unknown";  // Handle unexpected states
+        currentState = "unknown"; // Handle unexpected states
     }
 
     // Print the state only if it has changed from the previous state
@@ -361,6 +374,7 @@ void loop() {
 
     // Use NFC reader logic here to detect RFID card, similar to your previous code
     // ...
+    ++counter;
 }
 
 //... see MicroOcpp.h for more possibilities
