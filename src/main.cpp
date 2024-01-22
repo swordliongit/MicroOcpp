@@ -31,14 +31,14 @@ ESP8266WiFiMulti WiFiMulti;
 // #define OCPP_PORT 12415
 #define OCPP_PORT 6012
 // #define OCPP_URL "ws://178.157.15.196:12415/CP_1"
-#define OCPP_URL "ws://ocpp.petroo.dev:6012/ocpp/16/CP_1"
+#define OCPP_URL "ws://ocpp.petroo.dev:6012/ocpp/16/00004464CE8C"
 
 unsigned long previousMillis_post_req_auth = 0;
 const long interval_post_req_auth = 1000;
 int counter = 0;
 bool rfidCardDetected = false;
 
-bool is_plugged = false;
+bool is_plugged = true;
 bool last_plugged_status = false;
 
 bool active = false;
@@ -237,14 +237,14 @@ void loop() {
     //     }
     //     yield();
     // }
-    if (counter % 70000 == 0) {
-        is_plugged = true;
-        Serial.println("PLUGGED IN!");
-    }
-    if (counter % 120000 == 0) {
-        is_plugged = false;
-        Serial.println("UNPLUGGED!");
-    }
+    // if (counter % 70000 == 0) {
+    //     is_plugged = true;
+    //     Serial.println("PLUGGED IN!");
+    // }
+    // if (counter % 200000 == 0 && (counter)) {
+    //     is_plugged = false;
+    //     Serial.println("UNPLUGGED!");
+    // }
 
 
     /*
@@ -273,7 +273,7 @@ void loop() {
             return true;
         });
 
-        sendMeterValues(connector_id, transaction_id);
+        // sendMeterValues(connector_id, transaction_id);
         // // Begin a new transaction
         // Serial.printf("[main] Begin Transaction with idTag %s\n",
         //               idTag.c_str());
@@ -339,7 +339,7 @@ void loop() {
 
     // Print the state only if it has changed from the previous state
     if (currentState != lastState) {
-        sendMeterValues(connector_id, transaction_id);
+        // sendMeterValues(connector_id, transaction_id);
         Serial.println(F("\n\n"));
         Serial.println(active);
         Serial.println(running);
